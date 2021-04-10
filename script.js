@@ -17,36 +17,40 @@ const {
 const { breakLine } = require('./utils/break-line');
 const { runSystemCommand } = require('./utils/run-system-command');
 
+const Y = 'Y';
+const N = 'N';
+const yesNoPhrase = color.cyan(`[${Y}]es [${N}]o (Default "${N}"): `);
+
 breakLine();
 printBgGreen('Instalação e configuração do Eslint');
 breakLine();
 
 askPromise
-  .question(color.yellow(`O git está instalado? [S]im [N]ão (Padrão "N"):`))
+  .question(color.yellow(`Is "Git" installed? ${yesNoPhrase}`))
   .then((answer) => {
     askPromise.answers = { ...askPromise.answers, gitInstalled: answer };
     if (isNo(answer)) {
-      printRed(`[N]ão selecionado!`);
-      printRed(`Por favor, instale o git em seu computador.`);
+      printRed(`[N]o selected!`);
+      printRed(`Please, install git from https://git-scm.com/downloads.`);
       process.exit();
     }
 
     return askPromise.question(
-      color.yellow(`Configurar eslint e prettier? [S]im [N]ão (Padrão "N"):`),
+      color.yellow(`Install and configure Eslint and Prettier? ${yesNoPhrase}`),
     );
   })
   .then((answer) => {
     askPromise.answers = { ...askPromise.answers, allowExecution: answer };
 
     if (isNo(answer)) {
-      printRed(`[N]ão selecionado, saindo...`);
+      printRed(`[N]o selected!`);
       askPromise.close();
       process.exit();
       return;
     }
 
     return askPromise.question(
-      color.yellow(`Está usando o React? [S]im [N]ão (Padrão "N"):`),
+      color.yellow(`Do you use React? ${yesNoPhrase}`),
     );
   })
   .then((answer) => {
@@ -54,7 +58,7 @@ askPromise
     askPromise.answers = { ...askPromise.answers, usingReact };
 
     return askPromise.question(
-      color.yellow(`Está usando o TypeScript? [S]im [N]ão (Padrão "N"):`),
+      color.yellow(`Do you use TypeScript? ${yesNoPhrase}`),
     );
   })
   .then((usingTypeScriptAnswer) => {
@@ -62,8 +66,8 @@ askPromise
     askPromise.answers = { ...askPromise.answers, usingTypeScript };
 
     breakLine();
-    printGreen(`Ok! Estou tentando instalar os pacotes.`);
-    printGreen(`Isso pode levar um tempinho, aguarde...`);
+    printGreen(`Ok! Trying to install packages.`);
+    printGreen(`This may take a while. Please wait...`);
 
     askPromise.close();
 
@@ -105,11 +109,11 @@ const executeNpmCommand = () => {
   }
 
   breakLine();
-  printYellow(`Eslint: configurações que foram aplicadas`);
+  printYellow(`Eslint configuration to be applied: `);
   print(color.white, toJson(eslintConfigObj));
 
   breakLine();
-  printYellow(`Prettier: configurações que foram aplicadas`);
+  printYellow(`Prettier configuration to be applied: `);
   printWhite(toJson(prettierConfigObj));
 
   const eslintFilePath = path.resolve('.', '.eslintrc.json');
@@ -119,7 +123,7 @@ const executeNpmCommand = () => {
   const systemCommandCallback = (error, stdout) => {
     if (error) {
       breakLine();
-      printRed(`Mais que chato, olha o erro que ocorreu:`);
+      printRed(`An error occurred:`);
 
       breakLine();
       printRed(`${error.message}`);
@@ -128,19 +132,19 @@ const executeNpmCommand = () => {
       return;
     }
 
-    printCyan(`A instalação foi concluída:`);
+    printCyan(`Installation completed:`);
     breakLine();
     printCyan(`${stdout}`);
 
     saveFile(eslintFilePath, eslintConfigObj);
     saveFile(prettierFilePath, prettierConfigObj);
 
-    printGreen(`.eslintrc.json salvo em ${eslintFilePath}`);
-    printGreen(`.prettierrc.json salvo em ${prettierFilePath}`);
+    printGreen(`.eslintrc.json saved: ${eslintFilePath}`);
+    printGreen(`.prettierrc.json saved: ${prettierFilePath}`);
 
     breakLine();
-    printMagenta(`Parece que tudo correu bem!`);
-    printMagenta(`Recarregue seu editor e verifique 😊!`);
+    printMagenta(`Seems like everything is fine!`);
+    printMagenta(`You may need to reload your editor 😊!`);
 
     print(color.magenta, 'BYE!');
 
