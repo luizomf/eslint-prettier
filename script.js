@@ -1,140 +1,163 @@
-console.log('');
-const { exec } = require('child_process');
-console.log(
-  ` \u001b[30m\u001b[42m Instalação e configuração do Eslint \u001b[0m`,
-);
+const { exec: runSystemCommand } = require('child_process');
+const nodeReadLine = require('readline');
+const fileSystem = require('fs');
+const path = require('path');
 
-const readline = require('readline');
-const fs = require('fs');
-var path = require('path');
-
-const rl = readline.createInterface({
+const ask = nodeReadLine.createInterface({
   input: process.stdin,
   output: process.stdout,
 });
 
-console.log('');
-rl.question(
-  `\u001b[36m Configurar eslint e prettier? [S]im [N]ão (Padrão "N"): \u001b[0m`,
+const breakLine = () => console.log();
+
+const endColor = '\u001b[0m';
+const bgGreen = (...args) => `\u001b[30m\u001b[42m${args.join(' ')}${endColor}`;
+const white = (...args) => `\u001b[37m${args.join(' ')}${endColor}`;
+const cyan = (...args) => `\u001b[36m${args.join(' ')}${endColor}`;
+const magenta = (...args) => `\u001b[35m${args.join(' ')}${endColor}`;
+const blue = (...args) => `\u001b[34m${args.join(' ')}${endColor}`;
+const yellow = (...args) => `\u001b[33m${args.join(' ')}${endColor}`;
+const green = (...args) => `\u001b[32m${args.join(' ')}${endColor}`;
+const red = (...args) => `\u001b[31m${args.join(' ')}${endColor}`;
+const black = (...args) => `\u001b[30m${args.join(' ')}${endColor}`;
+
+const isYes = (answer) => answer.toLocaleLowerCase().startsWith('s');
+const isNo = (answer) => !isYes(answer);
+const log = (color, ...args) => console.log(color(args));
+
+const toJson = (obj) => JSON.stringify(obj, null, 2);
+const saveFile = (filePath, obj) => {
+  return fileSystem.writeFileSync(filePath, toJson(obj));
+};
+
+breakLine();
+log(bgGreen, 'Instalação e configuração do Eslint');
+breakLine();
+
+ask.question(
+  yellow(`O git está instalado? [S]im [N]ão (Padrão "N"):`),
   (answer) => {
-    if (!answer.toLocaleLowerCase().startsWith('s')) {
-      console.log(`\u001b[31m [N]ão selecionado, saindo...\u001b[0m `);
+    if (isNo(answer)) {
+      log(red, `[N]ão selecionado!`);
+      log(red, `Por favor, instale o git em seu computador.`);
+
+      ask.close();
       process.exit();
     }
 
-    return rl.question(
-      `\u001b[36m Está usando o React? [S]im [N]ão (Padrão "N"): \u001b[0m`,
-      (answer) => {
-        let react = answer.toLocaleLowerCase().startsWith('s');
-
-        return rl.question(
-          `\u001b[36m Está usando o TypeScript? [S]im [N]ão (Padrão "N"): \u001b[0m`,
-          (answer) => {
-            let typescript = answer.toLocaleLowerCase().startsWith('s');
-
-            console.log();
-            console.log(
-              `\u001b[32;1m Ok! Estou tentando instalar os pacotes. \u001b[0m`,
-            );
-            console.log(
-              `\u001b[32;1m Isso pode levar um tempinho, aguarde... \u001b[0m`,
-            );
-
-            rl.close();
-
-            execute(react, typescript);
-          },
-        );
-      },
-    );
+    return startCodeExecution();
   },
 );
 
-const execute = (react = false, typescript = false) => {
-  let command = 'npm install -D eslint eslint-config-prettier ';
-  command += ' eslint-plugin-prettier prettier';
+breakLine();
 
-  const eslintrc = require('./eslint_config_file');
-  const prettierc = require('./prettier_config_file');
+const startCodeExecution = () =>
+  ask.question(
+    yellow(`Configurar eslint e prettier? [S]im [N]ão (Padrão "N"):`),
+    (allowExecutionAnswer) => {
+      if (isNo(allowExecutionAnswer)) {
+        log(red, `[N]ão selecionado, saindo...`);
+        process.exit();
+        return;
+      }
 
-  if (react) {
-    eslintrc.extends = [
-      ...eslintrc.extends,
+      return ask.question(
+        yellow(`Está usando o React? [S]im [N]ão (Padrão "N"):`),
+        (usingReactAnswer) => {
+          let usingReact = isYes(usingReactAnswer);
+
+          return ask.question(
+            yellow(`Está usando o TypeScript? [S]im [N]ão (Padrão "N"):`),
+            (usingTypeScriptAnswer) => {
+              let usingTypeScript = isYes(usingTypeScriptAnswer);
+
+              breakLine();
+              log(green, `Ok! Estou tentando instalar os pacotes.`);
+              log(green, `Isso pode levar um tempinho, aguarde...`);
+
+              ask.close();
+
+              executeNpmCommand(usingReact, usingTypeScript);
+            },
+          );
+        },
+      );
+    },
+  );
+
+const executeNpmCommand = (usingReact = false, usingTypeScript = false) => {
+  let npmCommand = 'npm install -D eslint eslint-config-prettier ';
+  npmCommand += ' eslint-plugin-prettier prettier';
+
+  const eslintConfigObj = require('./eslint_config_file');
+  const prettierConfigObj = require('./prettier_config_file');
+
+  if (usingReact) {
+    eslintConfigObj.extends = [
+      ...eslintConfigObj.extends,
       'plugin:react/recommended',
       'plugin:react-hooks/recommended',
     ];
-    eslintrc.settings = {
+    eslintConfigObj.settings = {
       react: {
         version: 'detect',
       },
     };
-    eslintrc.plugins.push('react');
-    command += ' eslint-plugin-react eslint-plugin-react-hooks ';
+    eslintConfigObj.plugins.push('react');
+    npmCommand += ' eslint-plugin-react eslint-plugin-react-hooks ';
   }
 
-  if (typescript) {
-    eslintrc.extends = [
-      ...eslintrc.extends,
+  if (usingTypeScript) {
+    eslintConfigObj.extends = [
+      ...eslintConfigObj.extends,
       'plugin:@typescript-eslint/recommended',
     ];
-    eslintrc.parser = '@typescript-eslint/parser';
-    eslintrc.plugins.push('@typescript-eslint');
-    command += ' @typescript-eslint/eslint-plugin @typescript-eslint/parser ';
+    eslintConfigObj.parser = '@typescript-eslint/parser';
+    eslintConfigObj.plugins.push('@typescript-eslint');
+    npmCommand += ' @typescript-eslint/eslint-plugin @typescript-eslint/parser';
   }
 
-  console.log();
-  console.log(
-    `\u001b[32;1m Eslint: configurações que foram aplicadas \u001b[0m`,
-  );
-  console.log(eslintrc);
+  breakLine();
+  log(yellow, `Eslint: configurações que foram aplicadas`);
+  log(white, toJson(eslintConfigObj));
 
-  console.log();
-  console.log(
-    `\u001b[32;1m Prettier: configurações que foram aplicadas \u001b[0m`,
-  );
-  console.log(prettierc);
+  breakLine();
+  log(yellow, `Prettier: configurações que foram aplicadas`);
+  log(white, toJson(prettierConfigObj));
 
-  const eslintPath = path.resolve('.', '.eslintrc.json');
-  const prettierPath = path.resolve('.', '.prettierrc.json');
-  console.log();
+  const eslintFilePath = path.resolve('.', '.eslintrc.json');
+  const prettierFilePath = path.resolve('.', '.prettierrc.json');
+  breakLine();
 
-  const callback = (error, stdout) => {
+  const systemCommandCallback = (error, stdout) => {
     if (error) {
-      console.log();
-      console.log(
-        `\u001b[31m Mais que chato, olha o erro que ocorreu:\u001b[0m`,
-      );
-      console.log();
-      console.log(`\u001b[31m ${error.message}\u001b[0m`);
+      breakLine();
+      log(red, `Mais que chato, olha o erro que ocorreu:`);
+
+      breakLine();
+      log(red, `${error.message}`);
+
       return;
     }
 
-    // if (stderr) {
-    //   console.log(`\u001b[31m Error: ${stderr}\u001b[0m`);
-    //   return;
-    // }
+    log(cyan, `A instalação foi concluída:`);
+    breakLine();
+    log(cyan, `${stdout}`);
 
-    console.log(`\u001b[32;1m A instalação foi concluída: \u001b[0m`);
-    console.log();
-    console.log(`${stdout}`);
+    saveFile(eslintFilePath, eslintConfigObj);
+    saveFile(prettierFilePath, prettierConfigObj);
 
-    fs.writeFileSync(eslintPath, JSON.stringify(eslintrc, null, 2));
-    fs.writeFileSync(prettierPath, JSON.stringify(prettierc, null, 2));
+    log(green, `.eslintrc.json salvo em ${eslintFilePath}`);
+    log(green, `.prettierrc.json salvo em ${prettierFilePath}`);
 
-    console.log(`\u001b[32;1m .eslintrc.json salvo em ${eslintPath} \u001b[0m`);
+    breakLine();
+    log(magenta, `Parece que tudo correu bem!`);
+    log(magenta, `Recarregue seu editor e verifique 😊!`);
 
-    console.log(
-      `\u001b[32;1m .prettierrc.json salvo em ${prettierPath} \u001b[0m`,
-    );
-
-    console.log();
-    console.log(`\u001b[32;1m Parece que tudo correu bem! \u001b[0m`);
-    console.log(`\u001b[32;1m Recarregue seu editor e verifique 😊! \u001b[0m`);
-
-    console.log(' BYE!');
+    log(magenta, 'BYE!');
 
     process.exit();
   };
 
-  exec(command, callback);
+  runSystemCommand(npmCommand, systemCommandCallback);
 };
