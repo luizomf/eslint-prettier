@@ -5,3 +5,5 @@ Just a simple script a was testing. It configures Eslint and Prettier. You can t
 ```
 npx https://github.com/luizomf/eslint-prettier
 ```
+
+**It requires Node, Npm (Npx) and Git installed.**
