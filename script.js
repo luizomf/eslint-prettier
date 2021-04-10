@@ -1,47 +1,34 @@
-const { exec: runSystemCommand } = require('child_process');
-const nodeReadLine = require('readline');
-const fileSystem = require('fs');
 const path = require('path');
-
-const ask = nodeReadLine.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
-
-const breakLine = () => console.log();
-
-const endColor = '\u001b[0m';
-const bgGreen = (...args) => `\u001b[30m\u001b[42m${args.join(' ')}${endColor}`;
-const white = (...args) => `\u001b[37m${args.join(' ')}${endColor}`;
-const cyan = (...args) => `\u001b[36m${args.join(' ')}${endColor}`;
-const magenta = (...args) => `\u001b[35m${args.join(' ')}${endColor}`;
-const yellow = (...args) => `\u001b[33m${args.join(' ')}${endColor}`;
-const green = (...args) => `\u001b[32m${args.join(' ')}${endColor}`;
-const red = (...args) => `\u001b[31m${args.join(' ')}${endColor}`;
-const _blue = (...args) => `\u001b[34m${args.join(' ')}${endColor}`;
-const _black = (...args) => `\u001b[30m${args.join(' ')}${endColor}`;
-
-const isYes = (answer) => answer.toLocaleLowerCase().startsWith('s');
-const isNo = (answer) => !isYes(answer);
-const log = (color, ...args) => console.log(color(args));
-
-const toJson = (obj) => JSON.stringify(obj, null, 2);
-const saveFile = (filePath, obj) => {
-  return fileSystem.writeFileSync(filePath, toJson(obj));
-};
+const { ask } = require('./utils/ask-questions');
+const color = require('./utils/color-functions');
+const { saveFile } = require('./utils/save-file');
+const toJson = require('./utils/to-json');
+const { isYes, isNo } = require('./utils/yes-no-answer');
+const {
+  print,
+  printBgGreen,
+  printRed,
+  printGreen,
+  printYellow,
+  printWhite,
+  printCyan,
+  printMagenta,
+} = require('./utils/print');
+const { breakLine } = require('./utils/break-line');
+const { runSystemCommand } = require('./utils/run-system-command');
 
 breakLine();
-log(bgGreen, 'Instalação e configuração do Eslint');
+printBgGreen('Instalação e configuração do Eslint');
 breakLine();
 
-ask.question(
-  yellow(`O git está instalado? [S]im [N]ão (Padrão "N"):`),
-  (answer) => {
+ask(
+  color.yellow(`O git está instalado? [S]im [N]ão (Padrão "N"):`),
+  (answer, close) => {
     if (isNo(answer)) {
-      log(red, `[N]ão selecionado!`);
-      log(red, `Por favor, instale o git em seu computador.`);
+      printRed(`[N]ão selecionado!`);
+      printRed(`Por favor, instale o git em seu computador.`);
 
-      ask.close();
+      close();
       process.exit();
     }
 
@@ -52,30 +39,31 @@ ask.question(
 breakLine();
 
 const startCodeExecution = () =>
-  ask.question(
-    yellow(`Configurar eslint e prettier? [S]im [N]ão (Padrão "N"):`),
-    (allowExecutionAnswer) => {
+  ask(
+    color.yellow(`Configurar eslint e prettier? [S]im [N]ão (Padrão "N"):`),
+    (allowExecutionAnswer, close) => {
       if (isNo(allowExecutionAnswer)) {
-        log(red, `[N]ão selecionado, saindo...`);
+        printRed(`[N]ão selecionado, saindo...`);
+        close();
         process.exit();
         return;
       }
 
-      return ask.question(
-        yellow(`Está usando o React? [S]im [N]ão (Padrão "N"):`),
-        (usingReactAnswer) => {
+      return ask(
+        color.yellow(`Está usando o React? [S]im [N]ão (Padrão "N"):`),
+        (usingReactAnswer, _close) => {
           let usingReact = isYes(usingReactAnswer);
 
-          return ask.question(
-            yellow(`Está usando o TypeScript? [S]im [N]ão (Padrão "N"):`),
-            (usingTypeScriptAnswer) => {
+          return ask(
+            color.yellow(`Está usando o TypeScript? [S]im [N]ão (Padrão "N"):`),
+            (usingTypeScriptAnswer, close) => {
               let usingTypeScript = isYes(usingTypeScriptAnswer);
 
               breakLine();
-              log(green, `Ok! Estou tentando instalar os pacotes.`);
-              log(green, `Isso pode levar um tempinho, aguarde...`);
+              printGreen(`Ok! Estou tentando instalar os pacotes.`);
+              printGreen(`Isso pode levar um tempinho, aguarde...`);
 
-              ask.close();
+              close();
 
               executeNpmCommand(usingReact, usingTypeScript);
             },
@@ -118,12 +106,12 @@ const executeNpmCommand = (usingReact = false, usingTypeScript = false) => {
   }
 
   breakLine();
-  log(yellow, `Eslint: configurações que foram aplicadas`);
-  log(white, toJson(eslintConfigObj));
+  printYellow(`Eslint: configurações que foram aplicadas`);
+  print(color.white, toJson(eslintConfigObj));
 
   breakLine();
-  log(yellow, `Prettier: configurações que foram aplicadas`);
-  log(white, toJson(prettierConfigObj));
+  printYellow(`Prettier: configurações que foram aplicadas`);
+  printWhite(toJson(prettierConfigObj));
 
   const eslintFilePath = path.resolve('.', '.eslintrc.json');
   const prettierFilePath = path.resolve('.', '.prettierrc.json');
@@ -132,29 +120,29 @@ const executeNpmCommand = (usingReact = false, usingTypeScript = false) => {
   const systemCommandCallback = (error, stdout) => {
     if (error) {
       breakLine();
-      log(red, `Mais que chato, olha o erro que ocorreu:`);
+      printRed(`Mais que chato, olha o erro que ocorreu:`);
 
       breakLine();
-      log(red, `${error.message}`);
+      printRed(`${error.message}`);
 
       return;
     }
 
-    log(cyan, `A instalação foi concluída:`);
+    printCyan(`A instalação foi concluída:`);
     breakLine();
-    log(cyan, `${stdout}`);
+    printCyan(`${stdout}`);
 
     saveFile(eslintFilePath, eslintConfigObj);
     saveFile(prettierFilePath, prettierConfigObj);
 
-    log(green, `.eslintrc.json salvo em ${eslintFilePath}`);
-    log(green, `.prettierrc.json salvo em ${prettierFilePath}`);
+    printGreen(`.eslintrc.json salvo em ${eslintFilePath}`);
+    printGreen(`.prettierrc.json salvo em ${prettierFilePath}`);
 
     breakLine();
-    log(magenta, `Parece que tudo correu bem!`);
-    log(magenta, `Recarregue seu editor e verifique 😊!`);
+    printMagenta(`Parece que tudo correu bem!`);
+    printMagenta(`Recarregue seu editor e verifique 😊!`);
 
-    log(magenta, 'BYE!');
+    print(color.magenta, 'BYE!');
 
     process.exit();
   };
