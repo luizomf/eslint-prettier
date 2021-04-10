@@ -1,5 +1,5 @@
 const path = require('path');
-const { ask } = require('./utils/ask-questions');
+const { askPromise } = require('./utils/ask-questions');
 const color = require('./utils/color-functions');
 const { saveFile } = require('./utils/save-file');
 const toJson = require('./utils/to-json');
@@ -21,66 +21,65 @@ breakLine();
 printBgGreen('Instalação e configuração do Eslint');
 breakLine();
 
-ask(
-  color.yellow(`O git está instalado? [S]im [N]ão (Padrão "N"):`),
-  (answer, close) => {
+askPromise
+  .question(color.yellow(`O git está instalado? [S]im [N]ão (Padrão "N"):`))
+  .then((answer) => {
+    askPromise.answers = { ...askPromise.answers, gitInstalled: answer };
     if (isNo(answer)) {
       printRed(`[N]ão selecionado!`);
       printRed(`Por favor, instale o git em seu computador.`);
-
-      close();
       process.exit();
     }
 
-    return startCodeExecution();
-  },
-);
+    return askPromise.question(
+      color.yellow(`Configurar eslint e prettier? [S]im [N]ão (Padrão "N"):`),
+    );
+  })
+  .then((answer) => {
+    askPromise.answers = { ...askPromise.answers, allowExecution: answer };
+
+    if (isNo(answer)) {
+      printRed(`[N]ão selecionado, saindo...`);
+      askPromise.close();
+      process.exit();
+      return;
+    }
+
+    return askPromise.question(
+      color.yellow(`Está usando o React? [S]im [N]ão (Padrão "N"):`),
+    );
+  })
+  .then((answer) => {
+    let usingReact = isYes(answer);
+    askPromise.answers = { ...askPromise.answers, usingReact };
+
+    return askPromise.question(
+      color.yellow(`Está usando o TypeScript? [S]im [N]ão (Padrão "N"):`),
+    );
+  })
+  .then((usingTypeScriptAnswer) => {
+    let usingTypeScript = isYes(usingTypeScriptAnswer);
+    askPromise.answers = { ...askPromise.answers, usingTypeScript };
+
+    breakLine();
+    printGreen(`Ok! Estou tentando instalar os pacotes.`);
+    printGreen(`Isso pode levar um tempinho, aguarde...`);
+
+    askPromise.close();
+
+    executeNpmCommand();
+  });
 
 breakLine();
 
-const startCodeExecution = () =>
-  ask(
-    color.yellow(`Configurar eslint e prettier? [S]im [N]ão (Padrão "N"):`),
-    (allowExecutionAnswer, close) => {
-      if (isNo(allowExecutionAnswer)) {
-        printRed(`[N]ão selecionado, saindo...`);
-        close();
-        process.exit();
-        return;
-      }
-
-      return ask(
-        color.yellow(`Está usando o React? [S]im [N]ão (Padrão "N"):`),
-        (usingReactAnswer, _close) => {
-          let usingReact = isYes(usingReactAnswer);
-
-          return ask(
-            color.yellow(`Está usando o TypeScript? [S]im [N]ão (Padrão "N"):`),
-            (usingTypeScriptAnswer, close) => {
-              let usingTypeScript = isYes(usingTypeScriptAnswer);
-
-              breakLine();
-              printGreen(`Ok! Estou tentando instalar os pacotes.`);
-              printGreen(`Isso pode levar um tempinho, aguarde...`);
-
-              close();
-
-              executeNpmCommand(usingReact, usingTypeScript);
-            },
-          );
-        },
-      );
-    },
-  );
-
-const executeNpmCommand = (usingReact = false, usingTypeScript = false) => {
+const executeNpmCommand = () => {
   let npmCommand = 'npm install -D eslint eslint-config-prettier ';
   npmCommand += ' eslint-plugin-prettier prettier';
 
   const eslintConfigObj = require('./eslint_config_file');
   const prettierConfigObj = require('./prettier_config_file');
 
-  if (usingReact) {
+  if (askPromise.answers.usingReact) {
     eslintConfigObj.extends = [
       ...eslintConfigObj.extends,
       'plugin:react/recommended',
@@ -95,7 +94,7 @@ const executeNpmCommand = (usingReact = false, usingTypeScript = false) => {
     npmCommand += ' eslint-plugin-react eslint-plugin-react-hooks ';
   }
 
-  if (usingTypeScript) {
+  if (askPromise.answers.usingTypeScript) {
     eslintConfigObj.extends = [
       ...eslintConfigObj.extends,
       'plugin:@typescript-eslint/recommended',
@@ -125,6 +124,7 @@ const executeNpmCommand = (usingReact = false, usingTypeScript = false) => {
       breakLine();
       printRed(`${error.message}`);
 
+      process.exit();
       return;
     }
 
@@ -145,6 +145,7 @@ const executeNpmCommand = (usingReact = false, usingTypeScript = false) => {
     print(color.magenta, 'BYE!');
 
     process.exit();
+    return;
   };
 
   runSystemCommand(npmCommand, systemCommandCallback);

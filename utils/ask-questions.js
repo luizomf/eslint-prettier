@@ -11,6 +11,18 @@ const ask = (question, callback) => {
   });
 };
 
+const askPromise = {
+  question: (question) =>
+    new Promise((resolve) => {
+      readline.question(question, (answer) => {
+        return resolve(answer);
+      });
+    }),
+  close: readline.close.bind(readline),
+  answers: {},
+};
+
 module.exports = {
   ask,
+  askPromise,
 };
