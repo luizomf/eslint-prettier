@@ -1,3 +1,8 @@
 {
-  "window.zoomLevel": 0
+  "window.zoomLevel": 0,
+  // Auto fix on save
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true,
+    "source.fixAll": true
+  },
 }
